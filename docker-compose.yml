@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:18-alpine
+        WORKDIR /app
+        COPY package.json ./
+        RUN npm install
+        COPY . .
+        CMD ["node", "gateway/server.js"]
+    container_name: gateway_service
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - REPLICAS=http://replica1:5001,http://replica2:5002,http://replica3:5003
+    networks:
+      - raft_net
+
+  replica1:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:18-alpine
+        WORKDIR /app
+        COPY package.json ./
+        RUN npm install
+        COPY . .
+        CMD ["node", "replica1/index.js"]
+    container_name: replica1_node
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ID=replica1
+      - PORT=5001
+      - PEERS=http://replica2:5002,http://replica3:5003
+      - GATEWAY_URL=http://gateway:4000
+    networks:
+      - raft_net
+
+  replica2:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:18-alpine
+        WORKDIR /app
+        COPY package.json ./
+        RUN npm install
+        COPY . .
+        CMD ["node", "replica2/index.js"]
+    container_name: replica2_node
+    ports:
+      - "5002:5002"
+    environment:
+      - NODE_ID=replica2
+      - PORT=5002
+      - PEERS=http://replica1:5001,http://replica3:5003
+      - GATEWAY_URL=http://gateway:4000
+    networks:
+      - raft_net
+
+  replica3:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:18-alpine
+        WORKDIR /app
+        COPY package.json ./
+        RUN npm install
+        COPY . .
+        CMD ["node", "replica3/index.js"]
+    container_name: replica3_node
+    ports:
+      - "5003:5003"
+    environment:
+      - NODE_ID=replica3
+      - PORT=5003
+      - PEERS=http://replica1:5001,http://replica2:5002
+      - GATEWAY_URL=http://gateway:4000
+    networks:
+      - raft_net
+
+  frontend:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:18-alpine
+        WORKDIR /app
+        COPY package.json ./
+        RUN npm install
+        COPY . .
+        EXPOSE 3000
+        CMD ["node", "-e", "const express = require('express'); const app = express(); app.use(express.static('frontend')); app.listen(3000, () => console.log('Frontend listening on port 3000'));"]
+    container_name: frontend_service
+    ports:
+      - "3000:3000"
+    networks:
+      - raft_net
+
+networks:
+  raft_net:
+    driver: bridge

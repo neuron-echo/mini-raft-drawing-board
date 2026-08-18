@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distributed Drawing Board | Mini-RAFT Consensus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <div>
+          <h1>Mini-RAFT Distributed Drawing Board</h1>
+          <p class="subtitle">Fault-Tolerant Consensus & State Replication Engine</p>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <div class="status-badge" id="ws-status">
+          <span class="pulse-dot grey"></span>
+          <span id="ws-status-text">Connecting...</span>
+        </div>
+        <div class="leader-badge" id="cluster-leader-badge">
+          <span class="leader-icon">👑</span>
+          <span id="leader-text">Leader: Discovering...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      <!-- Left: Collaborative Canvas -->
+      <section class="canvas-section glass-panel">
+        <div class="canvas-toolbar">
+          <div class="tool-group">
+            <label>Tool:</label>
+            <button class="tool-btn active" id="btn-pen" title="Pen">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Draw
+            </button>
+            <button class="tool-btn" id="btn-eraser" title="Eraser">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+              Eraser
+            </button>
+          </div>
+
+          <div class="tool-group">
+            <label>Color:</label>
+            <div class="color-picker-wrapper">
+              <input type="color" id="color-picker" value="#6366f1">
+              <div class="color-presets">
+                <button class="color-swatch active" data-color="#6366f1" style="background:#6366f1"></button>
+                <button class="color-swatch" data-color="#ec4899" style="background:#ec4899"></button>
+                <button class="color-swatch" data-color="#10b981" style="background:#10b981"></button>
+                <button class="color-swatch" data-color="#f59e0b" style="background:#f59e0b"></button>
+                <button class="color-swatch" data-color="#3b82f6" style="background:#3b82f6"></button>
+                <button class="color-swatch" data-color="#ffffff" style="background:#ffffff"></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tool-group">
+            <label>Size:</label>
+            <input type="range" id="brush-size" min="2" max="30" value="4">
+            <span id="brush-size-val">4px</span>
+          </div>
+
+          <div class="tool-group actions">
+            <button class="action-btn danger" id="btn-clear">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              Clear Canvas
+            </button>
+          </div>
+        </div>
+
+        <div class="canvas-wrapper">
+          <canvas id="drawing-canvas"></canvas>
+          <div class="canvas-overlay" id="canvas-overlay">
+            <span class="overlay-msg">Connecting to Gateway WebSocket...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: RAFT Cluster Dashboard & Controls -->
+      <aside class="dashboard-aside">
+        <!-- Node Cards Grid -->
+        <div class="panel-header">
+          <h2>RAFT Cluster Nodes (3 Replicas)</h2>
+          <span class="tag">Quorum: 2/3</span>
+        </div>
+
+        <div class="node-cards-grid" id="node-cards">
+          <!-- Replica cards dynamically populated -->
+          <div class="node-card loading">
+            <div class="node-header">
+              <span class="node-title">Replica 1</span>
+              <span class="role-badge">Fetching...</span>
+            </div>
+          </div>
+          <div class="node-card loading">
+            <div class="node-header">
+              <span class="node-title">Replica 2</span>
+              <span class="role-badge">Fetching...</span>
+            </div>
+          </div>
+          <div class="node-card loading">
+            <div class="node-header">
+              <span class="node-title">Replica 3</span>
+              <span class="role-badge">Fetching...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Consensus State Summary -->
+        <div class="glass-panel stats-card">
+          <h3>Cluster Consensus Metrics</h3>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">Current Term</span>
+              <span class="metric-value" id="metric-term">--</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Committed Strokes</span>
+              <span class="metric-value" id="metric-commit-idx">--</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Leader Node</span>
+              <span class="metric-value highlight" id="metric-leader">--</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">WS Clients</span>
+              <span class="metric-value" id="metric-clients">1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- System Event Log Console -->
+        <div class="glass-panel log-panel">
+          <div class="log-header">
+            <h3>Consensus & Network Log</h3>
+            <button id="btn-clear-log" class="text-btn">Clear</button>
+          </div>
+          <div class="log-console" id="log-console">
+            <div class="log-entry info">[System] Initialized Mini-RAFT drawing client</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
